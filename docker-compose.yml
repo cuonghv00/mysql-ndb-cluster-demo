@@ -1,0 +1,68 @@
+services:
+  mgmd1:
+    image: container-registry.oracle.com/mysql/community-cluster:8.4
+    command: ndb_mgmd
+    volumes:
+       - ./conf/my.cnf:/etc/my.cnf
+       - ./conf/mysql-cluster.cnf:/etc/mysql-cluster.cnf
+    networks:
+      mysql-net:
+        ipv4_address: 172.25.0.10
+  ndb1:
+    image: container-registry.oracle.com/mysql/community-cluster:8.4
+    command: ndbd
+    volumes:
+       - ./conf/my.cnf:/etc/my.cnf
+       - ./conf/mysql-cluster.cnf:/etc/mysql-cluster.cnf
+    depends_on:
+      - mgmd1
+    networks:
+      mysql-net:
+        ipv4_address: 172.25.0.11
+  ndb2:
+    image: container-registry.oracle.com/mysql/community-cluster:8.4
+    command: ndbd
+    depends_on:
+      - mgmd1
+    volumes:
+       - ./conf/my.cnf:/etc/my.cnf
+       - ./conf/mysql-cluster.cnf:/etc/mysql-cluster.cnf
+    networks:
+      mysql-net:
+        ipv4_address: 172.25.0.12
+  mysqld:
+    image: container-registry.oracle.com/mysql/community-cluster:8.4
+    command: mysqld
+    depends_on:
+      - mgmd1
+      - ndb1
+      - ndb2
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_ROOT_HOST: '%'
+    volumes:
+       - ./conf/my.cnf:/etc/my.cnf
+       - ./conf/mysql-cluster.cnf:/etc/mysql-cluster.cnf
+    networks:
+      mysql-net:
+        ipv4_address: 172.25.0.20
+  mgm:
+    image: container-registry.oracle.com/mysql/community-cluster:8.4
+    command: ndb_mgm
+    depends_on:
+      - mgmd1
+      - ndb1
+      - ndb2
+      - mysql1
+    volumes:
+       - ./conf/my.cnf:/etc/my.cnf
+       - ./conf/mysql-cluster.cnf:/etc/mysql-cluster.cnf
+    networks:
+      mysql-net:
+networks:
+  mysql-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.5.254
